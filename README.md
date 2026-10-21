@@ -89,3 +89,6 @@ code notices remain in `NOTICE` and `forge_fibo2/vendor/PROVENANCE.json`.
 
 Run CPU regressions with `python -m pytest tests -q`. No model weights or GPU job
 are required; optional real-asset/tokenizer checks skip when resources are absent.
+The publication suite passes **93 tests,2 optional checks skipped**, with CUDA
+hidden. The separate random-weight CUDA smoke is import-safe and requires an
+explicit `python tests/test_tiny_pipeline.py --cuda-smoke` invocation.

@@ -24,3 +24,8 @@ Its CPU suite separately checks packaging fixtures and the explicit local-manife
 helper. The real-tokenizer check skips when a tokenizer is not installed. GitHub
 CI status is reported from the actual workflow run after publication, not assumed
 from local test passes. No inference is run by CI.
+
+The publication CPU-only run passed **93 tests,2 optional resource checks skipped**
+with CUDA hidden. A legacy tiny random-weight CUDA smoke previously executed
+during pytest import; it is now import-safe, covered by an import-safety regression,
+and requires an explicit `--cuda-smoke` flag when run as a standalone script.
