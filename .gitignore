@@ -5,7 +5,7 @@ __pycache__/
 .env*
 model-manifest.json
 model_locations.json
-models/
+/models/
 outputs/
 *.safetensors
 *.gguf
