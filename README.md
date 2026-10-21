@@ -6,14 +6,20 @@ the retained legacy module identifies itself as `2.0.0-dev`.
 
 | Model route | Existing Forge workflow | Validation |
 |---|---|---|
-| FIBO 2.0 Dev | `fibo2_dev` preset, txt2img, Euler/Simple,30 steps,CFG5 | Real official INT8 diffusion + BF16 encoder generation and portrait inspected |
-| FIBO 2.0 Edit Turbo | `fibo2` preset, img2img source/inpaint input, Euler/Simple,4 steps,CFG1 | Real official INT8 diffusion with BF16 and official INT8 encoders; masked editing/recovery verified |
-| FIBO 1.5 generation | Legacy `fibo` preset and FIBO1.5 manifest checkpoint; txt2img | Separate implementation retained; dispatch/loader/generation regression tests, not full-weight validation in this run |
+| FIBO 2.0 Dev | **FIBO**, Dev checkpoint, txt2img, Euler/Simple,30 steps,CFG5 | Real official INT8 diffusion + BF16 encoder generation and portrait inspected |
+| FIBO 2.0 Edit Turbo | **FIBO**, Turbo checkpoint, img2img source/inpaint input, Euler/Simple,4 steps,CFG1 | Real official INT8 diffusion with BF16 and official INT8 encoders; masked editing/recovery verified |
+| FIBO 1.5 generation | **FIBO** and FIBO1.5 manifest checkpoint; txt2img | Separate implementation retained; dispatch/loader/generation regression tests, not full-weight validation in this run |
 | FIBO Edit1.5 Base/Turbo | Legacy edit manifest checkpoints; img2img | Separate `BriaFiboEditPipeline` route retained; mocked-model regression coverage, not full-weight validation in this run |
 
 **No new generation tab, accordion, source widget or Generate button.** Use the
 normal main checkpoint/encoder/VAE selector and native Generate/Interrupt.
 Forge core, backend and shared packages are not patched by installation.
+
+The streamlined UI presents one **FIBO** item in the existing **UI Preset**
+dropdown. The selected checkpoint chooses the Dev, Turbo or legacy route.
+Internal `fibo`, `fibo2` and `fibo2_dev` option names remain for saved-setting
+compatibility; they are not three separate displayed choices. Editing stays in
+native img2img. This UI cleanup does not expand the supported control combinations.
 
 ## Install and link existing FIBO2 assets
 
@@ -71,12 +77,28 @@ Full control parity, other attention kernels and arbitrary schedules are not cla
 
 ## Validation limits
 
-The installed combined suite passed **90 tests;1 optional local-asset test
-skipped**. Live checks additionally covered native API generation, a photorealistic
-Dev portrait, both encoder precisions, exact outside-mask RGBA preservation,
-cancellation followed by recovery, PNG infotext roundtrip and restart persistence.
-The installed-code Turbo smoke completed in42.05s including reload/processing.
-These are one-machine measurements, not benchmarks for every GPU.
+The single-entry UI regression suite passed **103 tests;2 optional checks skipped**
+with CUDA hidden. Real Gradio callbacks verified Dev/Turbo/legacy routing, saved
+option compatibility and unchanged non-FIBO outputs. Live checks additionally
+covered native API generation, both encoder precisions, exact outside-mask RGBA
+preservation, cancellation/recovery, PNG infotext roundtrip and restart persistence.
+
+Post-restart checks used the installed extension in an isolated Forge profile:
+
+| Native request | Settings | Total request | Sampling loop |
+|---|---|---:|---:|
+| Dev txt2img | 1024x1024,30 steps,CFG5,seed64 | 84.9s | 46s |
+| Turbo source edit | 1024x1024,4 steps,CFG1,seed64 | 21.2s | 12s |
+| Dev portrait | 896x1152,30 steps,CFG5,seed20261021 | 66.1s | 46s |
+| Turbo hat edit of that portrait | 896x1152,4 steps,CFG1,seed20261021 | 34.0s | 12s |
+
+All four used official INT8_CONVROT diffusion, BF16 Qwen3-VL text encoder and
+Euler/Simple on one RTX5090. Total request includes selection/loading/preparation,
+encoding, sampling, decoding, saving and API response; server startup is excluded.
+Full component loading and peak VRAM were not separately instrumented. These are
+one-machine observations, not general benchmarks. The hat edit was visually
+inspected: identity/composition remained recognizable, with minor skin/shading
+changes. It was unmasked, so exact unchanged pixels are not claimed.
 
 **Browser mouse-click Generate/Interrupt and rendered gallery/save acceptance are
 still pending:** no browser/app surface was available to the verifier. Served UI
@@ -89,6 +111,5 @@ code notices remain in `NOTICE` and `forge_fibo2/vendor/PROVENANCE.json`.
 
 Run CPU regressions with `python -m pytest tests -q`. No model weights or GPU job
 are required; optional real-asset/tokenizer checks skip when resources are absent.
-The publication suite passes **93 tests,2 optional checks skipped**, with CUDA
-hidden. The separate random-weight CUDA smoke is import-safe and requires an
+The separate random-weight CUDA smoke is import-safe and requires an
 explicit `python tests/test_tiny_pipeline.py --cuda-smoke` invocation.

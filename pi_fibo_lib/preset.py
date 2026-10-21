@@ -75,7 +75,8 @@ def _report(*args, **kwargs):
         from modules_forge import main_entry
         raw = main_entry.ui_forge_preset.choices
         names = [c[1] if isinstance(c, (tuple, list)) else c for c in raw]
-        status = "OK" if PRESET_NAME in names else "MISSING"
+        labels = [c[0] if isinstance(c,(tuple,list)) else c for c in raw]
+        status = "OK" if PRESET_NAME in names or 'FIBO' in labels else "MISSING"
         print(f"{TAG} UI Preset 'fibo' served to browser: {status}")
     except Exception as error:
         print(f"{TAG} UI Preset verification unavailable: {error}")

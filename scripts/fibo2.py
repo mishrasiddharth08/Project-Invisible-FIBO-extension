@@ -7,6 +7,8 @@ if root not in sys.path:
 from modules import scripts
 from forge_fibo2.integration import install
 install()
+from forge_fibo2.unified_ui import install as install_single_fibo_entry
+install_single_fibo_entry()
 
 # Explain reference-conditioning semantics on the existing native control.
 # This adds no component, tab or accordion and leaves its value/behavior intact.
