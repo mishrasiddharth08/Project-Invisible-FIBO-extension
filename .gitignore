@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.cache/
+.env*
+model-manifest.json
+model_locations.json
+models/
+outputs/
+*.safetensors
+*.gguf
+*.bin
+*.pt
+*.pth
+*.ckpt
+*.partial
+*.log

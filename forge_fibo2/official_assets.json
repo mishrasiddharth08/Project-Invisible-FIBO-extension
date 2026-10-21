@@ -1,0 +1,63 @@
+{
+  "repository": "Comfy-Org/Fibo-2.0",
+  "revision": "41e6a0331eff43d5a323107197056e377288c642",
+  "upstream_code": "87ed5a0",
+  "assets": [
+    {
+      "path": "diffusion_models/fibo2_dev_bf16.safetensors",
+      "bytes": 16452934194,
+      "sha256": "2a09866ff073cae9114f5fd93c0f530f84d41f74dc06e3d0c1372587bb3e9984",
+      "role": "transformer",
+      "variant": "dev",
+      "precision": "bf16"
+    },
+    {
+      "path": "diffusion_models/fibo2_dev_int8_convrot.safetensors",
+      "bytes": 8408562474,
+      "sha256": "063dd397395809fd22234c6bd32932cfcb22619f4d2282bdbf1dc58c406fe325",
+      "role": "transformer",
+      "variant": "dev",
+      "precision": "int8_convrot"
+    },
+    {
+      "path": "diffusion_models/fibo2_edit_turbo_bf16.safetensors",
+      "bytes": 16452934194,
+      "sha256": "028f6cf13af75840d7cc7346a5784fe55887c6b9299d173c8271161ba5ccf7d0",
+      "role": "transformer",
+      "variant": "edit-turbo",
+      "precision": "bf16"
+    },
+    {
+      "path": "diffusion_models/fibo2_edit_turbo_int8_convrot.safetensors",
+      "bytes": 8408562474,
+      "sha256": "1f6fa7c499191f405467123f655f11762661eaa5bd479d1da8f161398ef72c3b",
+      "role": "transformer",
+      "variant": "edit-turbo",
+      "precision": "int8_convrot"
+    },
+    {
+      "path": "text_encoders/qwen3vl_4b_bf16.safetensors",
+      "bytes": 8875719384,
+      "sha256": "36f3ff447ef59201722e8f9ce6020c9819fdcfba6aa2608c4e09b1c0ce114e34",
+      "role": "text_encoder",
+      "variant": "shared",
+      "precision": "bf16"
+    },
+    {
+      "path": "text_encoders/qwen3vl_4b_int8_convrot.safetensors",
+      "bytes": 4858559240,
+      "sha256": "32de113cbf8282b02cbff0794b637b9d6676da09314a1db5a30bcea9bf4ee01c",
+      "role": "text_encoder",
+      "variant": "shared",
+      "precision": "int8_convrot"
+    },
+    {
+      "path": "vae/flux2-vae.safetensors",
+      "bytes": 336211292,
+      "sha256": "868fe7b343cc8f3a19dbcfcafbc3d5f888802be3f89bd81b65b3621a066ce8f3",
+      "role": "vae",
+      "variant": "shared",
+      "precision": "fp32"
+    }
+  ]
+}

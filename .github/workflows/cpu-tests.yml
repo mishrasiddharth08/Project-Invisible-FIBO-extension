@@ -1,0 +1,13 @@
+name: CPU regressions
+on: [push, pull_request]
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+      - run: python -m pip install diffusers==0.37.1 transformers==4.57.6 safetensors huggingface_hub accelerate pytest pillow numpy opencv-python-headless
+      - run: python -m pytest tests -q

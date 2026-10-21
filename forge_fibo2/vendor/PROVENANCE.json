@@ -1,0 +1,32 @@
+{
+  "upstream": "huggingface/diffusers",
+  "revision": "de988b7ee77c393a63865d265d19e267ef9c7bf5",
+  "license": "Apache-2.0",
+  "files": [
+    {
+      "source": "models/transformers/transformer_bria_fibo2.py",
+      "upstream_sha256": "c03cf2bc94ca6c5b09903e24cbb20334e871b743b75129738fde09ee2a8dac0a",
+      "vendored_sha256": "20c54846857a269ee39de82cefc39cc6c13c7a8df02de8010bc44729df103284"
+    },
+    {
+      "source": "pipelines/bria_fibo2/pipeline_bria_fibo2.py",
+      "upstream_sha256": "a058ba33929afee5b4c46b2a038e2276a35d57181313a69f1487a4157e9e9dac",
+      "vendored_sha256": "349650d2148f465115157da2bf8238828c0267729dad56d6e6bcfe3aebad5127"
+    },
+    {
+      "source": "pipelines/bria_fibo2/image_processor.py",
+      "upstream_sha256": "ee8d98791523721741b3a3cc480d9da7469da35c0f9a4fdff730a141e653ddfe",
+      "vendored_sha256": "d15c3e42cb1cec8b59e9d5be83414e5c45b4c56316ad73e113f43cb52e422430"
+    },
+    {
+      "source": "pipelines/bria_fibo2/pipeline_output.py",
+      "upstream_sha256": "7f3c40606cb62fb75f898a21ed450f1c05a7b5fea41230420c183e32d90a3029",
+      "vendored_sha256": "229ece2cb2ac1d8f58e3a26391de527749ceb3fe80650c72336b7bb88ce75ad8"
+    },
+    {
+      "source": "pipelines/bria_fibo2/text_images.py",
+      "upstream_sha256": "054c75dcc58bd801af9196f4ffb9305e179968f71e730d1230d1e6251806cedf",
+      "vendored_sha256": "128b8a2d103964785055eb707981c0d702b2a74af4d061bf8caff944d6615354"
+    }
+  ]
+}
