@@ -146,8 +146,8 @@ def _init(p, *_):
     if getattr(shared.opts, 'sd_vae_decode_method', 'Full') != 'Full':
         raise ValueError('Select Full VAE decoding for FIBO 2.0; SD approximate decoders are incompatible.')
     sources = getattr(p, 'init_images', None) or []
-    source = ImageOps.exif_transpose(sources[0]).convert('RGB') if sources else None
-    p._fibo2_source = source.resize((int(p.width), int(p.height)), Image.Resampling.LANCZOS) if source is not None else None
+    source = sources[0] if sources else None
+    p._fibo2_source = None
     p._fibo2_mask = None
     p._fibo2_edit_context = None
     p.overlay_images = None
@@ -156,6 +156,9 @@ def _init(p, *_):
     p.paste_to = None
     p.is_using_inpainting_conditioning = False
     mask = getattr(p, 'image_mask', None)
+    if source is not None and mask is None:
+        from .editing import prepare_edit
+        p._fibo2_source = prepare_edit(source, None, (int(p.width), int(p.height))).reference
     if mask is not None:
         if source is None:
             raise ValueError('A mask requires a source image.')
@@ -212,7 +215,11 @@ def _sample(p, conditioning, unconditional_conditioning, seeds, subseeds, subsee
         try:
             state.textinfo = 'FIBO 2.0: encoding source and prompt'
             variant = getattr(p, '_fibo2_variant', 'edit-turbo')
-            negative = getattr(p, 'negative_prompt', '') if variant == 'dev' else None
+            negative = None
+            if variant == 'dev':
+                negative = getattr(p, 'negative_prompts', None)
+                if negative is None:
+                    negative = getattr(p, 'negative_prompt', '')
             if isinstance(negative, list):
                 negative = negative[index]
             result = engine.pipe(prompt=prompt, image=p._fibo2_source, mask=p._fibo2_mask,
@@ -230,4 +237,11 @@ def _sample(p, conditioning, unconditional_conditioning, seeds, subseeds, subsee
             if outputs:
                 break
             raise RuntimeError('FIBO editing cancelled; no completed sampling result.')
+        except Exception as error:
+            try:
+                engine.pipe.maybe_free_model_hooks()
+            except Exception as cleanup_error:
+                if hasattr(error, 'add_note'):
+                    error.add_note(f'FIBO offload cleanup also failed: {cleanup_error}')
+            raise
     return torch.cat(outputs)

@@ -105,3 +105,18 @@ def test_sync_and_async_callback_wrappers_and_unload():
     finally:h.handle.uninstall()
     assert one.fn is original and two.fn is async_original
     assert h.Arch.choices()==RAW
+
+def test_reinstalled_route_uses_existing_component_and_events():
+    h = fake_host()
+    h.main.make_checkpoint_manager_ui()
+    dispatch = h.events[0][0]
+    h.handle.uninstall()
+    assert dispatch('Dev', 'fibo2') is h.marker
+    new = install_for_host(h.main, h.Arch, h.opts, h.callbacks, h.gr,
+                           lambda name: 'fibo2', None, lambda: h.root)
+    try:
+        h.main.make_checkpoint_manager_ui()
+        assert len(h.events) == 2
+        assert dispatch('Turbo', 'fibo2_dev')['value'] == 'fibo2'
+    finally:
+        new.uninstall()

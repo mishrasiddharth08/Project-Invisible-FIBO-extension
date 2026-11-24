@@ -102,10 +102,13 @@ def install_for_host(main,arch,opts,callbacks,gr,route,prepare,root_provider):
         target=main.ui_forge_preset
         # Preserve Gradio's normalized (label,value) pairs for other presets.
         target.choices=single_choices(target.choices,target.value)
+        target._fibo_route_current = route_selection
         if not getattr(target,'_fibo_route_bound',False):
-            main.ui_checkpoint.change(route_selection,inputs=[main.ui_checkpoint,target],outputs=[target],
+            def dispatch(name, visible_preset):
+                return target._fibo_route_current(name, visible_preset)
+            main.ui_checkpoint.change(dispatch,inputs=[main.ui_checkpoint,target],outputs=[target],
                 queue=False,show_progress=False,api_name='fibo_native_route')
-            root_provider().load(route_selection,inputs=[main.ui_checkpoint,target],outputs=[target],
+            root_provider().load(dispatch,inputs=[main.ui_checkpoint,target],outputs=[target],
                 queue=False,show_progress=False,api_name=False)
             target._fibo_route_bound=True
         return result

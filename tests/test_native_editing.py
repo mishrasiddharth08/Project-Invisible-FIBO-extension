@@ -75,3 +75,28 @@ def test_no_added_tab_accordion_or_private_generate():
     scripts=Path(__file__).resolve().parents[1]/'scripts'
     source='\n'.join(path.read_text(encoding='utf-8') for path in scripts.glob('*.py'))
     assert 'gr.Accordion' not in source and 'gr.Tab' not in source and 'Generate edit' not in source
+
+def test_unmasked_input_flattens_transparent_rgb(monkeypatch):
+    from forge_fibo2.engine import _init
+    module = ModuleType('modules')
+    module.shared = SimpleNamespace(opts=SimpleNamespace(sd_vae_decode_method='Full'))
+    monkeypatch.setitem(sys.modules, 'modules', module)
+    source = Image.new('RGBA', (32, 32), (255, 0, 0, 0))
+    source.putpixel((0, 0), (255, 0, 0, 128))
+    p = SimpleNamespace(init_images=[source], image_mask=None, cfg_scale=1, steps=4,
+                        width=32, height=32, prompt='edit')
+    _init(p)
+    assert p._fibo2_source.getpixel((1, 1)) == (255, 255, 255)
+    assert p._fibo2_source.getpixel((0, 0)) == (255, 127, 127)
+
+
+def test_wide_mask_roundtrip_without_stretch():
+    source = Image.new('RGB', (200, 100), 'orange')
+    mask = Image.new('L', source.size, 255)
+    prepared = prepare_edit(source, mask, (200, 200), only_masked=True, padding=0)
+    x, y, w, h = prepared.paste_to
+    assert (w, h) == (200, 200)
+    assert prepared.mask.getbbox() == (0, 50, 200, 150)
+    canvas = Image.new('RGB', source.size)
+    canvas.paste(prepared.reference, (x, y))
+    assert canvas.tobytes() == source.tobytes()

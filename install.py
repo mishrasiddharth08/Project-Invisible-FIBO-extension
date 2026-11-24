@@ -4,4 +4,4 @@ missing=[name for name in ('torch','diffusers','transformers','safetensors','hug
 if missing:
     print('[FIBO] Missing existing Forge dependencies: '+', '.join(missing))
 else:
-    print('[FIBO] Existing Forge environment retained. Use Setup-FIBO2.cmd for explicit model setup.')
+    print('[FIBO] Existing Forge environment retained. Use the README setup command for tools/link_existing_official.py for explicit model setup.')

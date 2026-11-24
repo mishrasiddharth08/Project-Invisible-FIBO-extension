@@ -25,12 +25,18 @@ def prepare_edit(source, mask, size, *, only_masked=False, padding=32, blur_x=0,
     if only_masked:
         pad=max(0,int(padding))
         left,top,right,bottom=bounds
-        width,height=right-left+2*pad,bottom-top+2*pad
-        ratio=size[0]/size[1]
-        width=max(width,height*ratio);height=max(height,width/ratio)
-        width=min(source.width,int(np.ceil(width)));height=min(source.height,int(np.ceil(height)))
-        left=max(0,min(source.width-width,int((left+right-width)/2)))
-        top=max(0,min(source.height-height,int((top+bottom-height)/2)))
+        from math import gcd
+        divisor = gcd(*size)
+        unit_w, unit_h = size[0] // divisor, size[1] // divisor
+        context_w = min(source.width, right - left + 2 * pad)
+        context_h = min(source.height, bottom - top + 2 * pad)
+        factor = max((context_w + unit_w - 1) // unit_w, (context_h + unit_h - 1) // unit_h)
+        width, height = unit_w * factor, unit_h * factor
+        def origin(start, end, extent, limit):
+            offset = limit - extent
+            return max(min(0, offset), min(max(0, offset), (start + end - extent) // 2))
+        left = origin(left, right, width, source.width)
+        top = origin(top, bottom, height, source.height)
         box=(left,top,left+width,top+height)
         ref=source.crop(box).resize(size,Image.Resampling.LANCZOS)
         prepared_mask=support.crop(box).resize(size,Image.Resampling.NEAREST)

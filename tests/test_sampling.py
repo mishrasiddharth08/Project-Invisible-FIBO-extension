@@ -60,3 +60,24 @@ def test_skip_preserves_native_flag_and_returns_real_partial_latents(monkeypatch
     result=_sample(p,None,None,[101,102],[],0,['one','two'])
     assert state.skipped and not state.interrupted
     assert torch.equal(result,noise[:1]+1)
+
+def test_processed_negatives_follow_current_batch(monkeypatch):
+    p, _, pipe, _ = context(monkeypatch)
+    p._fibo2_variant = 'dev'
+    p.negative_prompt = ['first raw', 'second raw']
+    p.negative_prompts = ['third with style', 'fourth with style']
+    _sample(p, None, None, [3, 4], [], 0, ['third', 'fourth'])
+    assert [call['negative_prompt'] for call in pipe.calls] == p.negative_prompts
+
+
+def test_pipeline_failure_releases_hooks(monkeypatch):
+    import pytest
+    p, _, pipe, _ = context(monkeypatch)
+    released = []
+    def fail(self, **kwargs):
+        raise ValueError('encoding failed')
+    monkeypatch.setattr(type(pipe), '__call__', fail)
+    monkeypatch.setattr(pipe, 'maybe_free_model_hooks', lambda: released.append(True))
+    with pytest.raises(ValueError, match='encoding failed'):
+        _sample(p, None, None, [1, 2], [], 0, ['one', 'two'])
+    assert released == [True]

@@ -34,7 +34,7 @@ def install():
         release_current()
         manifest_path = ROOT / 'model-manifest.json'
         if not manifest_path.is_file():
-            raise RuntimeError('FIBO 2.0 setup is missing. Run Setup-FIBO2.cmd in the FIBO extension folder, then restart Forge.')
+            raise RuntimeError('FIBO 2.0 setup is missing. Run the README setup command for tools/link_existing_official.py in the FIBO extension folder, then restart Forge.')
         manifest = json.loads(manifest_path.read_text(encoding='utf-8'))
         selected_te = None
         selected_vae = None
