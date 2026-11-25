@@ -54,7 +54,16 @@ def checkpoint_route(name,sd_models):
     if variant=='edit-turbo':return 'fibo2'
     raise RuntimeAssetError('Cannot identify the selected FIBO Dev/Edit variant; select a verified checkpoint.')
 
-def install_for_host(main,arch,opts,callbacks,gr,route,prepare,root_provider):
+def legacy_recipe(name, sd_models):
+    from pi_fibo_lib.catalog import VARIANTS, selected_variant
+    info = sd_models.checkpoint_aliases.get(name) if name else None
+    if info is None and name:
+        info = sd_models.get_closet_checkpoint_match(name)
+    key = selected_variant(info.filename) if info is not None else None
+    return VARIANTS.get(key)
+
+
+def install_for_host(main,arch,opts,callbacks,gr,route,prepare,root_provider,recipe=None):
     existing=getattr(arch,'_fibo_single_ui',None)
     if existing is not None and existing.active:return existing
     originals={name:getattr(main,name) for name in ('make_checkpoint_manager_ui','checkpoint_change','on_preset_change')}
@@ -102,22 +111,68 @@ def install_for_host(main,arch,opts,callbacks,gr,route,prepare,root_provider):
         target=main.ui_forge_preset
         # Preserve Gradio's normalized (label,value) pairs for other presets.
         target.choices=single_choices(target.choices,target.value)
-        target._fibo_route_current = route_selection
         if not getattr(target,'_fibo_route_bound',False):
-            def dispatch(name, visible_preset):
-                return target._fibo_route_current(name, visible_preset)
-            main.ui_checkpoint.change(dispatch,inputs=[main.ui_checkpoint,target],outputs=[target],
+            main.ui_checkpoint.change(route_selection,inputs=[main.ui_checkpoint,target],outputs=[target],
                 queue=False,show_progress=False,api_name='fibo_native_route')
-            root_provider().load(dispatch,inputs=[main.ui_checkpoint,target],outputs=[target],
+            root_provider().load(route_selection,inputs=[main.ui_checkpoint,target],outputs=[target],
                 queue=False,show_progress=False,api_name=False)
             target._fibo_route_bound=True
         return result
+
+    recipe_controls = []
+
+    def recipe_values(name):
+        spec = recipe(name) if handle.active else None
+        return [spec.steps, spec.guidance] * 2 if spec else [gr.skip() for _ in recipe_controls]
+
+    if recipe is not None:
+        native_entry = main.forge_main_entry
+
+        @wraps(native_entry)
+        def forge_main_entry(*args, **kwargs):
+            result = native_entry(*args, **kwargs)
+            if handle.active:
+                controls = [main.get_a1111_ui_component(tab, label)
+                            for tab in ("txt2img", "img2img") for label in ("Steps", "CFG scale")]
+                if all(control is not None for control in controls):
+                    recipe_controls[:] = controls
+                    main.ui_checkpoint.input(recipe_values, inputs=[main.ui_checkpoint],
+                        outputs=controls, queue=False, show_progress=False, api_name=False)
+            return result
 
     def bind_outputs(demo,app):
         if not handle.active:return
         target=main.ui_forge_preset
         candidates=[]
         for function in demo.fns.values():
+            # Native preset changes and initial page load also populate the sliders.
+            # Resolve their positions from Forge's actual component objects.
+            outputs = list(function.outputs)
+            if (recipe_controls and function.fn is not None and
+                    any(output is main.ui_checkpoint for output in outputs) and
+                    all(control in outputs for control in recipe_controls) and
+                    getattr(function.fn, "_fibo_recipe_handle", None) is not handle):
+                original = function.fn
+                def wrap_recipe(fn, checkpoint_index, indexes):
+                    @wraps(fn)
+                    def wrapped(*args, **kwargs):
+                        result = fn(*args, **kwargs)
+                        if not handle.active or not isinstance(result, (list, tuple)):
+                            return result
+                        selection = result[checkpoint_index]
+                        name = selection.get("value") if isinstance(selection, dict) else selection
+                        spec = recipe(name) if isinstance(name, str) else None
+                        if spec is None:
+                            return result
+                        updated = list(result)
+                        for index, value in zip(indexes, (spec.steps, spec.guidance) * 2):
+                            updated[index] = gr.update(value=value)
+                        return tuple(updated) if isinstance(result, tuple) else updated
+                    wrapped._fibo_recipe_handle = handle
+                    return wrapped
+                candidates.append((function, original, wrap_recipe(original, outputs.index(main.ui_checkpoint),
+                                    [outputs.index(control) for control in recipe_controls])))
+                continue
             if not any(output is target for output in function.outputs) or function.fn is None:continue
             original=function.fn
             if getattr(original,'_fibo_single_handle',None) is handle:continue
@@ -155,6 +210,9 @@ def install_for_host(main,arch,opts,callbacks,gr,route,prepare,root_provider):
         if getattr(arch,'_fibo_single_ui',None) is handle:delattr(arch,'_fibo_single_ui')
 
     replacements={'make_checkpoint_manager_ui':make_ui,'checkpoint_change':checkpoint_change,'on_preset_change':on_preset_change}
+    if recipe is not None:
+        originals['forge_main_entry'] = native_entry
+        replacements['forge_main_entry'] = forge_main_entry
     handle.uninstall=uninstall;handle.bind_outputs=bind_outputs
     try:
         arch.choices=staticmethod(choices)
@@ -174,4 +232,5 @@ def install():
         from model_autolink.integration import _prepare_preset
     except ImportError:_prepare_preset=None
     return install_for_host(main_entry,presets.PresetArch,shared.opts,script_callbacks,gr,
-        lambda name:checkpoint_route(name,sd_models),_prepare_preset,lambda:Context.root_block)
+        lambda name:checkpoint_route(name,sd_models),_prepare_preset,lambda:Context.root_block,
+        lambda name:legacy_recipe(name,sd_models))

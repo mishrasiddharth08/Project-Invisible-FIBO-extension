@@ -19,7 +19,7 @@ import torch
 from safetensors import safe_open
 from safetensors.torch import save
 
-TARGETS = ("bf16", "fp16", "fp8", "fp8_e5m2", "mxfp8", "nvfp4", "int8", "int8_convrot", "int4_convrot", "int4_convrot_mixed", "w4a8_convrot")
+TARGETS = ("int8_convrot",)
 STACKED_EXPERT = re.compile(r"^(.*\.experts)\.(gate_proj|up_proj|down_proj)$")
 PROTECTED = ("embed", "norm", "bias", "scale", "adaln", "modulation", "final_layer", "lm_head")
 
@@ -146,8 +146,15 @@ def convert(source_path, destination, target, component, device="cuda", log=prin
         with safe_open(str(source_path), framework="pt", device="cpu") as source:
             if any(k.endswith(".comfy_quant") for k in source.keys()):
                 raise ValueError("Use the original BF16/FP16 source, not an already-quantized model")
+            identity = None
+            if not (source.metadata() or {}).get("project_invisible.role"):
+                from .provenance import identify
+                identity = identify(source_path, "transformer" if component == "dit" else "text_encoder")
             metadata = {**(source.metadata() or {}), "format": "pt", "pi_fibo2_component": component,
                 "pi_fibo2_format": target, "pi_fibo2_expert_layout": "split-linear-v1" if component == "te" else "none"}
+            if identity is not None:
+                metadata["pi_fibo2_source_sha256"] = identity["sha256"]
+                metadata["pi_fibo2_source_variant"] = identity["variant"]
             metadata['project_invisible.quantization'] = target
             writer = StreamingWriter(destination, metadata)
             def write_weight(key, value):

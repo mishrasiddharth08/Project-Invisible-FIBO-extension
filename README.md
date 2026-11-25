@@ -113,3 +113,24 @@ Run CPU regressions with `python -m pytest tests -q`. No model weights or GPU jo
 are required; optional real-asset/tokenizer checks skip when resources are absent.
 The separate random-weight CUDA smoke is import-safe and requires an
 explicit `python tests/test_tiny_pipeline.py --cuda-smoke` invocation.
+
+## Setup repair and preview update
+
+The optional Windows `Setup-FIBO2.cmd` uses the Forge Python environment (set
+`FORGE_PYTHON` to override it) and runs `setup_fibo2.py` explicitly. It keeps a
+valid existing local setup. If a stale manifest needs repair, the setup
+validates the replacement before retaining it and preserves a backup of the old
+manifest. It does not install Python packages. For existing official files, the
+local linking command above is still available. The separate converter exposes
+only its supported `int8_convrot` format.
+
+FIBO 1.5 applies the selected checkpoint's default steps and CFG and accepts
+normal unmasked img2img. FIBO 2.0 Dev uses Forge's processed negative prompt for
+each image in a batch. Progressive previews follow the generation interval;
+final masked previews use the same geometry and alpha handling as the output.
+Offloaded legacy models can use an approximate structural preview to avoid
+moving the VAE into GPU memory at every preview step.
+
+Automated coverage includes stale-manifest recovery, unmasked edits, masked
+preview compositing, prompt ordering, cancellation, and model hook cleanup.
+This update does not certify all checkpoints, resolutions, or driver stacks.

@@ -36,3 +36,8 @@ class Fibo2Lifecycle(scripts.Script):
         if prepared is not None:
             from forge_fibo2.editing import restore_masked_alpha
             pp.image=restore_masked_alpha(pp.image,prepared)
+
+        if getattr(p.sd_model, 'is_fibo2', False):
+            from modules import shared
+            from pi_fibo_lib.preview import publish
+            publish(shared.state, pp.image)

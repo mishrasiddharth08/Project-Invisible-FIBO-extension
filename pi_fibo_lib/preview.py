@@ -15,6 +15,7 @@ class DevelopingPreview:
         self.last = float("-inf")
         self.frames = 0
 
+
     def capture(self, module, args, output):
         if self.enabled:
             self.velocity = (output[0] if isinstance(output, tuple) else output.sample).detach()
@@ -25,12 +26,6 @@ class DevelopingPreview:
             return  # The final full-size decode is already next; don't decode it twice.
         if monotonic() - self.last < 1.0:
             return
-        # Offloaded GPUs would otherwise transfer the full transformer for every
-        # preview. Limit those to two small previews plus the actual final image.
-        if getattr(pipe, "_pi_memory_route", "resident") != "resident":
-            stride = max(1, self.state.sampling_steps // 3)
-            if self.frames >= 2 or (index + 1) % stride:
-                return
         try:
             import torch
             import torch.nn.functional as F
@@ -44,6 +39,16 @@ class DevelopingPreview:
             h, w = spatial.shape[-2:]
             ratio = min(1.0, 256 / max(self.height, self.width))
             spatial = F.interpolate(spatial, size=(max(1, int(h * ratio)), max(1, int(w * ratio))), mode="area")
+            if getattr(pipe, "_pi_memory_route", "resident") != "resident":
+                # A structural thumbnail avoids moving the VAE and transformer
+                # between CPU and GPU on every offloaded sampling step.
+                from PIL import Image
+                rgb = spatial[0, :3].sigmoid().mul(255).byte().permute(1, 2, 0).cpu().numpy()
+                size = (max(1, round(self.width * ratio)), max(1, round(self.height * ratio)))
+                publish(self.state, Image.fromarray(rgb).resize(size, Image.Resampling.BILINEAR))
+                self.frames += 1
+                self.last = monotonic()
+                return
             spatial = spatial.unsqueeze(2).to(dtype=pipe.vae.dtype)
             mean = torch.tensor(pipe.vae.config.latents_mean, device=spatial.device, dtype=spatial.dtype).view(1, -1, 1, 1, 1)
             std = torch.tensor(pipe.vae.config.latents_std, device=spatial.device, dtype=spatial.dtype).view(1, -1, 1, 1, 1)

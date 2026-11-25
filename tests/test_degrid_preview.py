@@ -63,3 +63,16 @@ class DeGridPreviewTests(unittest.TestCase):
         publish(state, final)
         self.assertIs(state.current_image, final)
         self.assertEqual(state.id_live_preview, 2)
+
+def test_offloaded_preview_keeps_up_without_loading_vae():
+    state = NS(sampling_steps=10, sampling_step=1, id_live_preview=0)
+    pipe = NS(_pi_memory_route="model", vae_scale_factor=16,
+              scheduler=NS(sigmas=torch.tensor([0.5]), step_index=0),
+              _unpack_latents_no_patch=lambda x, *args: x.reshape(1, 2, 2, 3).permute(0, 3, 1, 2))
+    preview = DevelopingPreview(state, 32, 32, 1)
+    latents = torch.ones(1, 4, 3)
+    with patch("pi_fibo_lib.preview.monotonic", side_effect=[1, 1, 2, 2, 3, 3]):
+        for step in range(3):
+            preview.capture(None, (), (torch.zeros_like(latents),))
+            preview.update(pipe, step, {"latents": latents})
+    assert state.id_live_preview == 3 and state.current_image.size == (32, 32)

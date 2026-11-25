@@ -20,18 +20,22 @@ def test_update_carries_fibo_choices_without_changing_other_native_outputs():
     assert ('FIBO','fibo2_dev') in updated[1]['choices']
     assert 'choices' not in value[1]
 
-def fake_host():
+def fake_host(recipe=None):
     calls=[];events=[];app_callbacks=[];unload=[];marker=object()
     class Component:
         def __init__(self,value=None):
             self.value=value;self.choices=[(x,x) if isinstance(x,str) else x for x in RAW]
         def change(self,fn,**kwargs):events.append((fn,kwargs))
+        input = change
     target=Component('fibo2_dev');checkpoint=Component('Dev')
     def on_preset_change(preset,*args,**kwargs):calls.append(('preset',preset,args,kwargs));return marker
     def checkpoint_change(ckpt_name,preset,save=True,refresh=True,**kwargs):
         calls.append(('checkpoint',ckpt_name,preset,save,refresh,kwargs));return marker
     main=NS(make_checkpoint_manager_ui=lambda:marker,checkpoint_change=checkpoint_change,
             on_preset_change=on_preset_change,ui_forge_preset=target,ui_checkpoint=checkpoint)
+    controls = {(tab, label): Component() for tab in ('txt2img', 'img2img') for label in ('Steps', 'CFG scale')}
+    main.forge_main_entry = lambda: marker
+    main.get_a1111_ui_component = lambda tab, label: controls[tab, label]
     class Arch:
         @staticmethod
         def choices():return list(RAW)
@@ -42,7 +46,7 @@ def fake_host():
     prepare_calls=[]
     handle=install_for_host(main,Arch,opts,callbacks,gr,
         lambda name:{'Dev':'fibo2_dev','Turbo':'fibo2','Legacy':'fibo'}.get(name),
-        lambda *args,**kwargs:prepare_calls.append((args,kwargs)),lambda:root)
+        lambda *args,**kwargs:prepare_calls.append((args,kwargs)),lambda:root, recipe)
     return NS(**locals())
 
 def test_registration_and_ui_build_preserve_saved_settings():
@@ -106,17 +110,20 @@ def test_sync_and_async_callback_wrappers_and_unload():
     assert one.fn is original and two.fn is async_original
     assert h.Arch.choices()==RAW
 
-def test_reinstalled_route_uses_existing_component_and_events():
-    h = fake_host()
-    h.main.make_checkpoint_manager_ui()
-    dispatch = h.events[0][0]
-    h.handle.uninstall()
-    assert dispatch('Dev', 'fibo2') is h.marker
-    new = install_for_host(h.main, h.Arch, h.opts, h.callbacks, h.gr,
-                           lambda name: 'fibo2', None, lambda: h.root)
+def test_legacy_recipe_uses_actual_checkpoint_on_selection_and_preset_load():
+    from pi_fibo_lib.catalog import VARIANTS
+    h = fake_host(VARIANTS.get)
     try:
-        h.main.make_checkpoint_manager_ui()
-        assert len(h.events) == 2
-        assert dispatch('Turbo', 'fibo2_dev')['value'] == 'fibo2'
+        h.main.forge_main_entry()
+        fn, event = h.events[-1]
+        assert fn("base") == [50, 5, 50, 5]
+        assert fn("edit") == [30, 5, 30, 5]
+        assert fn("Dev") == [h.marker] * 4
+        outputs = [h.checkpoint] + list(event["outputs"])
+        native = lambda name: [{"value": name}] + [{"value": 99}] * 4
+        callback = NS(fn=native, outputs=outputs)
+        h.app_callbacks[0](NS(fns={0: callback}), None)
+        assert [v["value"] for v in callback.fn("edit_turbo")] == ["edit_turbo", 4, 1, 4, 1]
+        assert callback.fn("Other") == native("Other")
     finally:
-        new.uninstall()
+        h.handle.uninstall()

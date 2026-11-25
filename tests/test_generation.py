@@ -67,7 +67,10 @@ class Generation(unittest.TestCase):
     def test_degrid_result_is_published_and_recorded_before_save(self):
         self._run_case(degrid=True)
 
-    def _run_case(self, edit=False, degrid=False):
+    def test_unmasked_edit_with_only_masked_selected(self):
+        self._run_case(edit=True, masked=False)
+
+    def _run_case(self, edit=False, degrid=False, masked=True):
         original = object()
         saved = []
         calls = []
@@ -89,7 +92,8 @@ class Generation(unittest.TestCase):
         p.setup_prompts = setup
         if edit:
             p.init_images = [Image.new("RGB", (32, 32), "red")]
-            p.image_mask = Image.new("L", (32, 32), 255)
+            p.inpaint_full_res = not masked
+            p.image_mask = Image.new("L", (32, 32), 255) if masked else None
         def save(image, path, basename, **kwargs):
             self.assertIsNone(shared.sd_model.sd_model_hash)
             self.assertIs(state.current_image, image)
@@ -133,7 +137,10 @@ class Generation(unittest.TestCase):
             import json
             self.assertEqual(json.loads(calls[0]["prompt"])["edit_instruction"], p.prompt)
             self.assertEqual(calls[0]["image"].getpixel((0, 0)), (255, 0, 0))
-            self.assertEqual(calls[0]["mask"].getpixel((0, 0)), 255)
+            if masked:
+                self.assertEqual(calls[0]["mask"].getpixel((0, 0)), 255)
+            else:
+                self.assertNotIn("mask", calls[0])
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

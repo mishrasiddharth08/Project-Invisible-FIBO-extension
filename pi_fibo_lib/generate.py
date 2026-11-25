@@ -57,7 +57,7 @@ def generate(p, variant, checkpoint, forge_root):
         raise ValueError("For img2img, select FIBO Edit Base or Turbo. Use this generation checkpoint in txt2img.")
     if spec.edit and not references:
         raise ValueError("Add your source image in img2img before editing.")
-    if spec.edit and getattr(p, "inpaint_full_res", False):
+    if spec.edit and getattr(p, "image_mask", None) is not None and getattr(p, "inpaint_full_res", False):
         raise ValueError("FIBO masked editing currently supports Whole picture. Select that in img2img; Only masked needs a separate crop/merge implementation.")
     folder = resolve_folder(variant, forge_root)
     if spec.guidance == 1 and float(p.cfg_scale) != 1:

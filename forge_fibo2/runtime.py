@@ -152,6 +152,15 @@ def _validate_metadata(path: Path, role: str) -> tuple[dict, list[str]]:
     elif expected_quant_role and quant_role == expected_quant_role:
         if metadata.get("pi_fibo2_format") != "int8_convrot":
             raise RuntimeAssetError(f"Unsupported quantization metadata: {path}")
+        from .provenance import PINS
+        source_hash = metadata.get("pi_fibo2_source_sha256")
+        source_variant = metadata.get("pi_fibo2_source_variant")
+        sources = [entry for entry in PINS["assets"] if entry["role"] == role
+                   and entry["sha256"] == source_hash and entry["variant"] == source_variant]
+        if not sources:
+            raise RuntimeAssetError(f"Converted {role} lacks reviewed official source identity: {path}")
+        metadata = dict(metadata, verified_official_variant=source_variant)
+
     else:
         from .provenance import identify
         try:

@@ -1,0 +1,80 @@
+{
+  "schema": 1,
+  "repository": "Comfy-Org/Fibo-2.0",
+  "revision": "41e6a0331eff43d5a323107197056e377288c642",
+  "family": "fibo2",
+  "family_display": "FIBO-2.0",
+  "version": "2.0",
+  "variant": "edit-turbo",
+  "components": {
+    "checkpoint": {
+      "path": "missing-fixture-root/FIBO-2.0/FIBO-2.0-Edit-Turbo-Official-int8_convrot.safetensors",
+      "available": true
+    },
+    "text_encoder_bf16": {
+      "path": "missing-fixture-root/text_encoder/Qwen3-VL-4B-TextEncoder-BF16--For-Krea2-Raw+Turbo.safetensors",
+      "available": true
+    },
+    "vae": {
+      "path": "missing-fixture-root/VAE/FLUX.2-VAE-FP32--For-FLUX.2-Dev+Klein-4B-9B+ERNIE-Image+Ideogram4.safetensors",
+      "available": true
+    },
+    "text_encoder_int8_convrot": {
+      "path": "missing-fixture-root/FLUX-3/Qwen3-VL-4B-TextEncoder-int8_convrot--For-FLUX-3.safetensors",
+      "available": true
+    },
+    "text_encoder_preference": [
+      "bf16",
+      "int8_convrot"
+    ],
+    "checkpoint_int8_convrot": {
+      "path": "missing-fixture-root/FIBO-2.0/FIBO-2.0-Edit-Turbo-int8_convrot.safetensors",
+      "sha256": "3349ac8845b3ce3eae2098de949139059b226540bd6d9ad9fbba21409605e536",
+      "bytes": 9949250626,
+      "available": true
+    }
+  },
+  "runtime": {
+    "model_index": "missing-fixture-root/Fibo-2.0-edit-turbo-bf16/model_index.json",
+    "scheduler": "missing-fixture-root/Fibo-2.0-edit-turbo-bf16/scheduler",
+    "processor": "missing-fixture-root/Fibo-2.0-edit-turbo-bf16/processor",
+    "fonts": "missing-fixture-root/Fibo-2.0-edit-turbo-bf16/fonts",
+    "component_configs": {
+      "transformer": {
+        "directory": "missing-fixture-root/configs/transformer",
+        "files": {
+          "config.json": {
+            "path": "missing-fixture-root/transformer/config.json",
+            "sha256": "2fd8dd1787a014c46a5cb23f119c33c219a1111de12263e75279d158c9194c87"
+          },
+          "diffusion_pytorch_model.safetensors.index.json": {
+            "path": "missing-fixture-root/transformer/diffusion_pytorch_model.safetensors.index.json",
+            "sha256": "7f0af4cdf2ff0902d3ffc3844e8a9b0427e273fa95b5824c73708639dca33bfa"
+          }
+        }
+      },
+      "text_encoder": {
+        "directory": "missing-fixture-root/configs/text_encoder",
+        "files": {
+          "config.json": {
+            "path": "missing-fixture-root/text_encoder/config.json",
+            "sha256": "9b3743efc786f7c2fe428615549920b6d285c27ff0df3acf2ba2aad8aa953ea8"
+          },
+          "generation_config.json": {
+            "path": "missing-fixture-root/text_encoder/generation_config.json",
+            "sha256": "5cd5c00e03e8197b1991aafbb6b4583075c55a46788b7d3262aec98d6a49ba64"
+          }
+        }
+      },
+      "vae": {
+        "directory": "missing-fixture-root/configs/vae",
+        "files": {
+          "config.json": {
+            "path": "missing-fixture-root/vae/config.json",
+            "sha256": "b5f9c47863e68fc4d851c187e7bd8646cb90811e859333a8b133793bbe415f2d"
+          }
+        }
+      }
+    }
+  }
+}

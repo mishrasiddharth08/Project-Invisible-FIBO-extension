@@ -96,13 +96,19 @@ class Fibo2Engine:
     @torch.inference_mode()
     def decode_first_stage(self, latents):
         from modules import shared
-        shared.state.textinfo = 'FIBO 2.0: decoding image'
+        from pi_fibo_lib.progress import LiveProgress
+        with LiveProgress(shared.state) as progress:
+            progress.phase('Decoding image')
+            return self._decode_latents(latents)
+
+    def _decode_latents(self, latents):
         pipe = self.pipe
         x = pipe._patchify_latents(latents)
         mean = pipe.vae.bn.running_mean.view(1, -1, 1, 1).to(x)
         scale = (pipe.vae.bn.running_var + pipe.vae.config.batch_norm_eps).rsqrt().view(1, -1, 1, 1).to(x)
         x = pipe._unpatchify_latents(x / scale + mean)
-        return pipe.vae.decode(x.to(dtype=pipe.vae.dtype), return_dict=False)[0]
+        device = getattr(pipe, '_execution_device', x.device)
+        return pipe.vae.decode(x.to(device=device, dtype=pipe.vae.dtype), return_dict=False)[0]
 
     def bind(self, p):
         p._fibo2_variant = getattr(self.pipe, '_fibo2_variant', 'edit-turbo')
@@ -140,7 +146,7 @@ def _setup_conds(p):
     p.c = p.uc = None
 
 def _init(p, *_):
-    from PIL import Image, ImageOps, ImageFilter
+    from PIL import ImageOps
     validate_request(p, getattr(p, '_fibo2_variant', 'edit-turbo'))
     from modules import shared
     if getattr(shared.opts, 'sd_vae_decode_method', 'Full') != 'Full':
@@ -166,7 +172,7 @@ def _init(p, *_):
         if getattr(p, 'inpainting_mask_invert', 0):
             mask = ImageOps.invert(mask)
         from .editing import prepare_edit
-        prepared=prepare_edit(sources[0],mask,(int(p.width),int(p.height)),
+        prepared=prepare_edit(source,mask,(int(p.width),int(p.height)),
             only_masked=bool(getattr(p,'inpaint_full_res',False)),
             padding=getattr(p,'inpaint_full_res_padding',32),
             blur_x=getattr(p,'mask_blur_x',0),blur_y=getattr(p,'mask_blur_y',0))
@@ -183,6 +189,15 @@ def _init(p, *_):
 
 @torch.inference_mode()
 def _sample(p, conditioning, unconditional_conditioning, seeds, subseeds, subseed_strength, prompts):
+    from modules import shared
+    from pi_fibo_lib.progress import LiveProgress
+    shared.state.sampling_step = 0
+    shared.state.sampling_steps = int(p.steps) * len(prompts)
+    shared.state.current_latent = None
+    with LiveProgress(shared.state) as progress:
+        return _sample_impl(p, conditioning, unconditional_conditioning, seeds, subseeds, subseed_strength, prompts, progress)
+
+def _sample_impl(p, conditioning, unconditional_conditioning, seeds, subseeds, subseed_strength, prompts, progress):
     from modules import shared
     from modules.sd_samplers_common import InterruptedException
     state, engine = shared.state, p.sd_model
@@ -202,6 +217,14 @@ def _sample(p, conditioning, unconditional_conditioning, seeds, subseeds, subsee
                 break
             raise RuntimeError('FIBO editing cancelled before sampling.')
         last = None
+        from .preview import DevelopingPreview
+        preview = DevelopingPreview(engine, state, getattr(shared, 'opts', None), float(getattr(p, 'cfg_scale', 1)), p)
+        transformer = getattr(engine.pipe, 'transformer', None)
+        handles = []
+        if transformer is not None:
+            handles.append(transformer.register_forward_pre_hook(lambda *_: progress.phase('Generating image')))
+            if preview.enabled:
+                handles.append(transformer.register_forward_hook(preview.capture))
         def callback(pipe, step, timestep, values):
             nonlocal last
             last = values['latents']
@@ -209,17 +232,16 @@ def _sample(p, conditioning, unconditional_conditioning, seeds, subseeds, subsee
             if state.interrupted or state.stopping_generation or state.skipped:
                 raise InterruptedException()
             state.sampling_step = index * int(p.steps) + step + 1
-            state.textinfo = f'FIBO 2.0: {state.sampling_step}/{state.sampling_steps}'
+            preview.update(pipe, step, values['latents'], int(p.steps))
+            progress.phase('Decoding image' if step + 1 == int(p.steps) else 'Generating image')
             # FIBO's 32-channel latents cannot use SD's approximate preview.
             return values
         try:
-            state.textinfo = 'FIBO 2.0: encoding source and prompt'
+            progress.phase('Encoding source and prompt')
             variant = getattr(p, '_fibo2_variant', 'edit-turbo')
-            negative = None
-            if variant == 'dev':
-                negative = getattr(p, 'negative_prompts', None)
-                if negative is None:
-                    negative = getattr(p, 'negative_prompt', '')
+            negative = getattr(p, 'negative_prompts', None) if variant == 'dev' else None
+            if negative is None and variant == 'dev':
+                negative = getattr(p, 'negative_prompt', '')
             if isinstance(negative, list):
                 negative = negative[index]
             result = engine.pipe(prompt=prompt, image=p._fibo2_source, mask=p._fibo2_mask,
@@ -244,4 +266,9 @@ def _sample(p, conditioning, unconditional_conditioning, seeds, subseeds, subsee
                 if hasattr(error, 'add_note'):
                     error.add_note(f'FIBO offload cleanup also failed: {cleanup_error}')
             raise
+        finally:
+            for handle in handles:
+                handle.remove()
+            preview.predictions.clear()
+            state.current_latent = None
     return torch.cat(outputs)
