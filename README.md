@@ -124,8 +124,10 @@ manifest. It does not install Python packages. For existing official files, the
 local linking command above is still available. The separate converter exposes
 only its supported `int8_convrot` format.
 
-FIBO 1.5 applies the selected checkpoint's default steps and CFG and accepts
-normal unmasked img2img. FIBO 2.0 Dev uses Forge's processed negative prompt for
+The FIBO 1.5 generation checkpoint uses txt2img (six steps, CFG 1). Legacy
+unmasked img2img requires a separate FIBO Edit 1.5 Base or Turbo checkpoint.
+The official FIBO 1.5 1024×1024 generation route was verified with its BF16
+weights in Forge; this does not verify the legacy Edit checkpoints. FIBO 2.0 Dev uses Forge's processed negative prompt for
 each image in a batch. Progressive previews follow the generation interval;
 final masked previews use the same geometry and alpha handling as the output.
 Offloaded legacy models can use an approximate structural preview to avoid

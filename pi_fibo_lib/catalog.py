@@ -52,8 +52,25 @@ def validate_folder(folder, variant):
     for role in ("transformer", "text_encoder", "vae"):
         component = folder / role
         config = read_json(component / "config.json")
-        if role == "transformer" and config.get("_class_name") != "BriaFiboTransformer2DModel":
-            raise ValueError("The selected transformer is not FIBO")
+        if role == "transformer":
+            transformer_class = config.get("_class_name")
+            # BRIA's official FIBO 1.5 Diffusers release uses its older
+            # internal config name but declares the current loader in the
+            # pipeline manifest. Recognize only that verified architecture.
+            legacy_fibo15 = (
+                variant == "fibo15"
+                and transformer_class == "Bria4Transformer2DModel"
+                and manifest.get("transformer") == ["diffusers", "BriaFiboTransformer2DModel"]
+                and all(config.get(k) == v for k, v in {
+                    "in_channels": 48, "joint_attention_dim": 4096,
+                    "text_encoder_dim": 2048, "num_layers": 8,
+                    "num_single_layers": 38, "num_attention_heads": 24,
+                    "attention_head_dim": 128, "patch_size": 1,
+                }.items())
+                and config.get("guidance_embeds") is False
+            )
+            if transformer_class != "BriaFiboTransformer2DModel" and not legacy_fibo15:
+                raise ValueError("The selected transformer is not FIBO")
         if role == "text_encoder" and config.get("model_type") != "smollm3":
             raise ValueError("FIBO requires its SmolLM3 text encoder")
         if role == "vae" and (config.get("_class_name") != "AutoencoderKLWan" or config.get("z_dim") != 48):
